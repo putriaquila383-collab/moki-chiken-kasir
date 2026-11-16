@@ -9,7 +9,7 @@ main{padding:12px;max-width:640px;margin:auto}h2{margin:6px 0 10px;font-size:20p
 button,select,input{font:inherit;color:var(--t);background:var(--c);border:1px solid var(--b);border-radius:8px;padding:10px;min-height:44px;width:100%}
 button{background:var(--p);color:var(--pt);border:0;font-weight:600;width:auto;min-width:64px}button.g{background:var(--c);color:var(--t);border:1px solid var(--b)}
 label{display:block;margin:6px 0;color:var(--m);font-size:13px}label input{margin-top:3px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.mi{display:flex;flex-direction:column;align-items:flex-start;text-align:left;min-height:64px;width:100%}.mi small{font-weight:400;opacity:.85}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.mi{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;text-align:left;min-height:76px;width:100%;background:var(--c);color:var(--t);border:1px solid var(--b);font-size:15px;line-height:1.25}.mi small{color:var(--p);font-weight:800;font-size:17px;margin-top:6px}
 .kpi{display:grid;grid-template-columns:1fr 1fr;gap:6px}.kpi div{background:var(--c);border:1px solid var(--b);border-radius:10px;padding:10px}.kpi b{display:block;font-size:18px}.kpi span{color:var(--m);font-size:12px}
 .bad{color:var(--bad)}.ok{color:var(--ok)}.warn{background:#fef3c7;color:#78350f;border-radius:10px;padding:10px;margin:8px 0}small{color:var(--m)}
 nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--c);border-top:1px solid var(--b);padding-bottom:env(safe-area-inset-bottom)}
@@ -54,7 +54,7 @@ const expected=s=>s.open+cashIn(s.id)-cashOut(s.id);
 /* views */
 const V={};
 function go(v,p){view=v;if(p)vp=Object.assign(vp,p);render();scrollTo(0,0)}
-function render(){$('#m').innerHTML=V[view]();const g=['rep','menu','ing','log','bak'].includes(view)?'more':view;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==g))}
+function render(){$('#m').innerHTML=V[view]();const g=['rep','menu','medit','ing','log','bak'].includes(view)?'more':view;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==g))}
 const rem=()=>{const s=S.shift;if(!s)return'';const e=SH[s.name][1]||24,h=W().h;return(h==e-1||(e==24&&h==23))?`<div class=warn><b>Sebentar lagi pergantian shift.</b> Siapkan checklist serah terima di tab Shift.</div>`:''};
 V.home=()=>{const s=S.shift,d=s?s.date:W().d,T=txs(onDate(d)),by=f=>sum(T.filter(f).map(t=>t.total)),un=S.tx.filter(t=>!t.void&&paid(t)<t.total);
 const low=S.ing.filter(i=>i.q<=i.min);
@@ -130,11 +130,17 @@ const hist=()=>'<h3>Shift sebelumnya</h3>'+S.shifts.filter(s=>s.status=='selesai
 V.more=()=>`<h2>Lainnya</h2><div class=grid><button class=mi onclick="go('rep')">Laporan</button><button class=mi onclick="go('menu')">Menu & harga</button><button class=mi onclick="go('ing')">Bahan baku</button><button class=mi onclick="go('log')">Riwayat audit</button><button class=mi onclick="go('bak')">Backup & restore</button></div>`;
 V.menu=()=>`<h2>Menu & harga</h2><div class=row><button onclick="editMenu()">+ Menu baru</button></div>${S.menu.map(m=>`<div class="card ${m.on?'':'void'}" onclick="editMenu('${m.id}')"><b>${E(m.name)}</b> <small>${E(m.cat)}${m.on?'':' · nonaktif'}</small><br>${S.channels.map(c=>E(c)+': '+(m.prices[c]!=null?rp(m.prices[c]):'-')).join(' · ')}<br><small>Resep: ${m.rec?m.rec.q+' '+N[m.rec.t]+' matang':'tidak mengurangi stok'} ${E(m.note)}</small></div>`).join('')}
 <h3>Saluran</h3><div class=row><button class=g onclick="addCh()">+ Saluran penjualan</button></div>`;
-function editMenu(id){const m=id?mn(id):M('', 'Lainnya',{});const n=prompt('Nama menu',m.name);if(!n)return;m.name=n;m.cat=prompt('Kategori',m.cat)||m.cat;
-S.channels.forEach(c=>{const v=prompt('Harga '+c+' (kosong = tidak ada)',m.prices[c]??'');if(v===null)return;const x=num(v);x===null?delete m.prices[c]:m.prices[c]=x});
-const r=prompt('Resep stok: b = 1 paha bawah matang, m = 1 ayam campur matang, angka+huruf mis. 2b, kosong = tidak ada',m.rec?m.rec.q+(m.rec.t=='bawah'?'b':'m'):'');
-if(r!==null){const q=parseFloat(r)||1,t=/b/i.test(r)?'bawah':/m/i.test(r)?'mix':null;m.rec=t?{t,q}:null}
-m.on=confirm('Menu aktif? OK = aktif, Batal = nonaktif');if(!id)S.menu.push(m);lg('menu','Menu disimpan: '+m.name);commit()}
+function editMenu(id){vp.me=id?JSON.parse(JSON.stringify(mn(id))):Object.assign(M('','Lainnya',{}),{isNew:true});go('medit')}
+V.medit=()=>{const m=vp.me,r=m.rec,lb='display:flex;gap:8px;align-items:center;color:var(--t)';return`<h2>${m.isNew?'Menu baru':'Edit menu'}</h2>
+<label>Nama menu<input id=f-n value="${E(m.name)}"></label><label>Kategori<input id=f-c value="${E(m.cat)}"></label>
+<h3>Harga per saluran</h3>${S.channels.map((c,i)=>`<label>${E(c)}<input id=f-p${i} type=number inputmode=numeric placeholder="kosong = tidak dijual" value="${m.prices[c]??''}"></label>`).join('')}
+<h3>Pengurangan stok ayam</h3><div class=row><select id=f-r><option value="">Tidak mengurangi stok</option><option value=bawah ${r?.t=='bawah'?'selected':''}>Paha bawah matang</option><option value=mix ${r?.t=='mix'?'selected':''}>Ayam campur matang</option></select><input id=f-q type=number step=any value="${r?.q??1}" style="max-width:90px"></div><small>Angka di kanan = jumlah potong per 1 porsi.</small>
+<label>Catatan<input id=f-t value="${E(m.note)}"></label><label style="${lb}"><input type=checkbox id=f-o ${m.on?'checked':''} style="width:24px;min-height:24px">Aktif (tampil di Kasir)</label>
+<div class=row><button onclick="saveMenu()">Simpan</button><button class=g onclick="go('menu')">Batal</button></div>${m.isNew?'':'<div class=row><button class=g style="color:var(--bad)" onclick="delMenu()">Hapus menu</button></div>'}`};
+function saveMenu(){const m=vp.me,n=$('#f-n').value.trim();if(!n)return alert('Nama menu wajib diisi.');m.name=n;m.cat=$('#f-c').value.trim()||'Lainnya';m.prices={};
+S.channels.forEach((c,i)=>{const v=num($('#f-p'+i).value||null);if(v!==null)m.prices[c]=v});const t=$('#f-r').value;m.rec=t?{t,q:num($('#f-q').value)||1}:null;m.note=$('#f-t').value;m.on=$('#f-o').checked;
+const nw=m.isNew;delete m.isNew;if(nw)S.menu.push(m);else S.menu[S.menu.findIndex(x=>x.id==m.id)]=m;lg('menu','Menu disimpan: '+n);save();go('menu')}
+function delMenu(){const m=vp.me;if(!confirm('Hapus menu "'+m.name+'" permanen? Transaksi lama tetap aman.'))return;S.menu=S.menu.filter(x=>x.id!=m.id);vp.cart=vp.cart.filter(c=>c.mid!=m.id);lg('menu','Menu dihapus: '+m.name);save();go('menu')}
 function addCh(){const n=prompt('Nama saluran baru');if(n&&!S.channels.includes(n)){S.channels.push(n);commit()}}
 V.ing=()=>`<h2>Bahan baku</h2><div class=row><button onclick="addIng()">+ Bahan</button></div>${S.ing.map(i=>`<div class=card><b>${E(i.name)}</b> <small>${E(i.cat)}</small><br><b class=${i.q<=i.min?'bad':''}>${i.q} ${E(i.unit)}</b> <small>min ${i.min}</small><div class=row><button onclick="ingMv('${i.id}',1)">Masuk</button><button class=g onclick="ingMv('${i.id}',-1)">Pakai</button><button class=g onclick="ingMv('${i.id}',0)">Opname</button></div></div>`).join('')||'<small>Belum ada bahan. Tambahkan beras, minyak, dll.</small>'}
 <h3>Riwayat</h3>${S.imoves.slice(0,30).map(x=>`<small>${W(x.ts).d} ${W(x.ts).t} ${E(x.name)} ${x.d>0?'+':''}${x.d} (${x.k})</small><br>`).join('')}`;
