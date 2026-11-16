@@ -65,7 +65,7 @@ return`<h2>Moki Kasir</h2>${rem()}<div class=card>${s?`Shift <b>${s.name}</b> ak
 <h3>Stok ayam</h3>${stSum()}<div class=kpi>${['bawah','mix'].map(t=>`<div><span>${N[t]}</span><b>${S.stock[t].raw} mentah · ${S.stock[t].cooked} matang</b></div>`).join('')}</div>
 ${low.length?`<div class=warn><b>Stok bahan menipis:</b> ${low.map(i=>E(i.name)).join(', ')}</div>`:''}
 ${un.length?'<h3>Belum dibayar</h3>'+un.map(txRow).join(''):''}`};
-const txRow=t=>`<div class="card ${t.void?'void':''}"><b>${t.no}</b> · ${W(t.ts).t} · ${E(t.ch)} · ${E(t.method)}<br>${t.items.map(i=>i.q+'× '+E(i.name)).join(', ')}<br><b>${rp(t.total)}</b> ${t.void?'<span class=bad>VOID: '+E(t.reason)+'</span>':stt(t)}${t.void||t.served?'':' · <i>belum diserahkan</i>'}${t.note?'<br><small>'+E(t.note)+'</small>':''}${t.void?'':`<div class=row>${paid(t)<t.total?`<button onclick="payTx('${t.id}')">Bayar</button>`:''}${t.served?'':`<button onclick="serve('${t.id}')">Serahkan</button>`}<button class=g onclick="voidTx('${t.id}')">Void</button></div>`}</div>`;
+const txRow=t=>`<div class="card ${t.void?'void':''}"><b>${t.no}</b> · ${W(t.ts).t} · ${E(t.ch)} · ${E(t.method)}<br>${t.items.map(i=>i.q+'× '+E(i.name)).join(', ')}<br><b>${rp(t.total)}</b> ${t.void?'<span class=bad>VOID: '+E(t.reason)+'</span>':stt(t)}${t.void||t.served?'':' · <i>belum diserahkan</i>'}${t.note?'<br><small>'+E(t.note)+'</small>':''}${t.void?'':`<div class=row>${paid(t)<t.total?`<button onclick="payTx('${t.id}')">Bayar</button>`:''}${t.served?'':`<button onclick="serve('${t.id}')">Serahkan</button>`}<button class=g onclick="editTx('${t.id}')">Edit</button><button class=g onclick="voidTx('${t.id}')">Void</button></div>`}</div>`;
 V.kasir=()=>{const ch=vp.ch||S.channels[0],cart=vp.cart,tot=sum(cart.map(c=>(price(c,ch)||0)*c.q)),pm=ch=='Dine-in'?'Tunai':'Platform online';
 return`<h2>Kasir</h2>${S.shift?'':'<div class="warn">Buka shift dulu di tab Shift sebelum mencatat.</div>'}
 <select onchange="vp.ch=this.value;render()">${S.channels.map(c=>`<option ${c==ch?'selected':''}>${E(c)}</option>`).join('')}</select>
@@ -88,6 +88,18 @@ if($('#sv').checked)doServe(t);vp.cart=[];vp.nt='';commit()}
 function doServe(t){if(t.served)return;const d={};t.items.forEach(i=>{const r=mn(i.mid)?.rec;if(r)d[r.t]=(d[r.t]||0)+r.q*i.q});
 for(const k in d){mv(k,'jual',0,-d[k],t.no);if(S.stock[k].cooked<0)alert(`Stok ${N[k]} matang jadi minus. Cek penggorengan/stok.`)}t.ded=d;t.served=true}
 function serve(id){doServe(S.tx.find(t=>t.id==id));commit()}
+function editTx(id){const t=S.tx.find(x=>x.id==id);vp.te=id;vp.bv=view;vp.tp=t.pays.map(p=>({...p}));vp.tn=t.note;go('tedit')}
+V.tedit=()=>{const t=S.tx.find(x=>x.id==vp.te),tp=vp.tp,pd=sum(tp.map(p=>+p.amt||0));
+return`<h2>Edit pembayaran</h2><div class=card><b>${t.no}</b> · ${E(t.ch)}<br>${t.items.map(i=>i.q+'× '+E(i.name)).join(', ')}<br><b>Total ${rp(t.total)}</b> · diterima ${rp(pd)}</div>
+<h3>Pembayaran</h3>${tp.map((p,i)=>`<div class=card><div class=row><select onchange="vp.tp[${i}].m=this.value">${METH.map(m=>`<option ${m==p.m?'selected':''}>${m}</option>`).join('')}</select><input type=number inputmode=numeric value="${p.amt}" oninput="vp.tp[${i}].amt=+this.value||0"><button class=g onclick="vp.tp.splice(${i},1);render()">Hapus</button></div></div>`).join('')||'<small>Tidak ada pembayaran (status Belum dibayar).</small>'}
+<div class=row><button class=g onclick="addPay()">+ Tambah pembayaran</button></div><small>Mengubah metode (mis. Tunai ke QRIS) langsung mengubah hitungan kas shift tersebut.</small>
+<label>Catatan transaksi<input id=te-n value="${E(vp.tn)}"></label><label>Alasan koreksi (wajib)<input id=te-r></label>
+<div class=row><button onclick="saveTe()">Simpan koreksi</button><button class=g onclick="go(vp.bv||'kasir')">Batal</button></div>`};
+function addPay(){const t=S.tx.find(x=>x.id==vp.te);vp.tp.push({m:'Tunai',amt:Math.max(0,t.total-sum(vp.tp.map(p=>+p.amt||0))),ts:Date.now(),sid:S.shift?.id||t.sid});render()}
+function saveTe(){const t=S.tx.find(x=>x.id==vp.te),r=$('#te-r').value.trim();if(!r)return alert('Isi alasan koreksi.');
+const np=vp.tp.filter(p=>+p.amt>0).map(p=>({ts:p.ts,m:p.m,amt:+p.amt,sid:p.sid})),f=a=>a.length?a.map(p=>p.m+' '+rp(p.amt)).join(' + '):'belum dibayar';
+if(sum(np.map(p=>p.amt))>t.total&&!confirm('Total pembayaran melebihi total transaksi. Lanjut?'))return;
+lg('koreksi',`${t.no} pembayaran: ${f(t.pays)} → ${f(np)}. Alasan: ${r}`);t.pays=np;t.note=$('#te-n').value;if(np[0])t.method=np[0].m;commit();go(vp.bv||'kasir')}
 function payTx(id){if(!S.shift)return alert('Buka shift dulu.');const t=S.tx.find(x=>x.id==id),r=t.total-paid(t);
 const a=ask('Jumlah dibayar (sisa '+rp(r)+')',r);if(!a)return;const k=ask('Metode: 1 Tunai, 2 QRIS, 3 Transfer, 4 Platform online',1);if(!METH[k-1])return;
 t.pays.push({ts:Date.now(),m:METH[k-1],amt:a,sid:S.shift.id});lg('pembayaran',`${t.no} dibayar ${rp(a)} via ${METH[k-1]}`);commit()}
