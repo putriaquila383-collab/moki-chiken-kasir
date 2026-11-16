@@ -1,0 +1,164 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#7c2d12"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg"><title>Moki Kasir</title>
+<style>
+:root{--bg:#f6f1ea;--c:#fff;--t:#24170f;--m:#7b6a5c;--p:#7c2d12;--pt:#fff;--ok:#166534;--bad:#b91c1c;--b:#e2d6c8}
+@media(prefers-color-scheme:dark){:root{--bg:#17110d;--c:#241a14;--t:#f4ebe3;--m:#a99a8d;--p:#fdba74;--pt:#2a1608;--ok:#4ade80;--bad:#f87171;--b:#3a2c22}}
+*{box-sizing:border-box}body{margin:0;font:15px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--t);padding:env(safe-area-inset-top) 0 calc(72px + env(safe-area-inset-bottom))}
+main{padding:12px;max-width:640px;margin:auto}h2{margin:6px 0 10px;font-size:20px}h3{margin:14px 0 6px;font-size:15px}
+.card{background:var(--c);border:1px solid var(--b);border-radius:10px;padding:10px;margin:8px 0}.void{opacity:.55}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.row>*{flex:1}
+button,select,input{font:inherit;color:var(--t);background:var(--c);border:1px solid var(--b);border-radius:8px;padding:10px;min-height:44px;width:100%}
+button{background:var(--p);color:var(--pt);border:0;font-weight:600;width:auto;min-width:64px}button.g{background:var(--c);color:var(--t);border:1px solid var(--b)}
+label{display:block;margin:6px 0;color:var(--m);font-size:13px}label input{margin-top:3px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.mi{display:flex;flex-direction:column;align-items:flex-start;text-align:left;min-height:64px;width:100%}.mi small{font-weight:400;opacity:.85}
+.kpi{display:grid;grid-template-columns:1fr 1fr;gap:6px}.kpi div{background:var(--c);border:1px solid var(--b);border-radius:10px;padding:10px}.kpi b{display:block;font-size:18px}.kpi span{color:var(--m);font-size:12px}
+.bad{color:var(--bad)}.ok{color:var(--ok)}.warn{background:#fef3c7;color:#78350f;border-radius:10px;padding:10px;margin:8px 0}small{color:var(--m)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--c);border-top:1px solid var(--b);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;color:var(--m);border-radius:0;min-height:56px;font-size:12px}nav button.on{color:var(--p);box-shadow:inset 0 3px var(--p)}
+table{width:100%;border-collapse:collapse;font-size:13px}td{padding:4px 2px;border-bottom:1px solid var(--b)}td:last-child{text-align:right}
+@media print{nav,.np{display:none}}
+</style></head><body><main id="m"></main>
+<nav><button data-v="home" onclick="go('home')">Beranda</button><button data-v="kasir" onclick="go('kasir')">Kasir</button><button data-v="stok" onclick="go('stok')">Stok</button><button data-v="shift" onclick="go('shift')">Shift</button><button data-v="more" onclick="go('more')">Lainnya</button></nav>
+<script>
+const $=s=>document.querySelector(s),E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num=v=>{if(v===null)return null;const x=parseFloat(String(v).replace(',','.'));return isNaN(x)?null:x},ask=(m,d)=>num(prompt(m,d??''));
+const rp=n=>(n<0?'-':'')+'Rp'+Math.round(Math.abs(n)).toLocaleString('id-ID'),uid=()=>Math.random().toString(36).slice(2,9);
+const W=(t=Date.now())=>{const s=new Date(t).toLocaleString('sv-SE',{timeZone:'Asia/Makassar'});return{d:s.slice(0,10),t:s.slice(11,16),h:+s.slice(11,13)}};
+const SH={Pagi:[8,16],Sore:[16,24],Malam:[0,8]},N={bawah:'Paha bawah',mix:'Ayam campur'},METH=['Tunai','QRIS','Transfer','Platform online'];
+const CK=['Periksa uang kas','Periksa transaksi Bobble','Periksa ayam mentah','Periksa ayam matang','Periksa bahan baku','Periksa pesanan belum dibayar','Periksa pengeluaran','Catat masalah/kejadian khusus'];
+const M=(name,cat,prices,rt,note)=>({id:uid(),name,cat,prices,rec:rt?{t:rt,q:1}:null,on:true,note:note||''});
+const seed=()=>({v:1,seq:0,last:null,channels:['Dine-in','GrabFood','ShopeeFood','GoFood'],shift:null,shifts:[],tx:[],cash:[],moves:[],log:[],ing:[],imoves:[],
+stock:{bawah:{raw:0,cooked:0},mix:{raw:0,cooked:0}},menu:[
+M('Nasi + ayam campur','Paket',{'Dine-in':16000},'mix'),M('Nasi + paha bawah','Paket',{'Dine-in':15000},'bawah'),
+M('Ayam campur (tanpa nasi)','Ayam',{'Dine-in':11000},'mix'),M('Ayam paha bawah (tanpa nasi)','Ayam',{'Dine-in':9000},'bawah'),
+M('Tambah sambal matah','Tambahan',{'Dine-in':1000}),M('Tambah rasa spicy','Tambahan',{'Dine-in':2000}),M('Tambah rasa BBQ','Tambahan',{'Dine-in':2000}),
+M('Paket geprek matah dada/sayap/paha atas','Online',{},'mix','Catatan: pernah Rp17.000 (platform belum dipastikan)'),
+M('Paket geprek sambal ijo dada/sayap/paha atas','Online',{},'mix','Catatan: pernah Rp16.000 (platform belum dipastikan)'),
+M('Paket geprek special dada/sayap/paha atas','Online',{},'mix','Catatan: pernah Rp16.000 (platform belum dipastikan)'),
+M('Paket geprek special sambal ijo paha bawah','Online',{},'bawah','Catatan: pernah Rp15.000 (platform belum dipastikan)'),
+M('Paket geprek sambal special','Online',{GrabFood:27280})]});
+/* storage */
+let S,view='home',vp={cart:[]};
+const idb=()=>new Promise((r,j)=>{const q=indexedDB.open('moki',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>r(q.result);q.onerror=j});
+const load=async()=>{const d=await idb();return new Promise(r=>{const q=d.transaction('kv').objectStore('kv').get('s');q.onsuccess=()=>r(q.result)})};
+const save=async()=>{const d=await idb();d.transaction('kv','readwrite').objectStore('kv').put(S,'s')};
+const commit=()=>{save();render()};
+const lg=(type,msg)=>S.log.unshift({ts:Date.now(),type,msg,sid:S.shift?.id});
+const mn=i=>S.menu.find(m=>m.id==i),shOf=i=>S.shifts.find(s=>s.id==i);
+const mv=(t,kind,dr,dc,note)=>{S.stock[t].raw+=dr;S.stock[t].cooked+=dc;S.moves.unshift({ts:Date.now(),sid:S.shift?.id,t,kind,dr,dc,note});lg('stok',`${N[t]}: ${kind} (mentah ${dr>=0?'+':''}${dr}, matang ${dc>=0?'+':''}${dc}) ${note||''}`)};
+const paid=t=>t.pays.reduce((a,p)=>a+p.amt,0),price=(c,ch)=>c.p??mn(c.mid).prices[ch];
+const stt=t=>paid(t)>=t.total?'<span class=ok>Lunas</span>':paid(t)>0?`<span class=bad>Sebagian (sisa ${rp(t.total-paid(t))})</span>`:'<span class=bad>Belum dibayar</span>';
+const txs=f=>S.tx.filter(t=>!t.void&&f(t)),inSh=id=>t=>t.sid==id,onDate=d=>t=>shOf(t.sid)?.date==d;
+const sum=a=>a.reduce((x,y)=>x+y,0),cashIn=id=>sum(S.tx.filter(t=>!t.void).flatMap(t=>t.pays).filter(p=>p.m=='Tunai'&&p.sid==id).map(p=>p.amt));
+const cashOut=(id,ty)=>sum(S.cash.filter(c=>c.sid==id&&(!ty||c.type==ty)).map(c=>c.amt));
+const expected=s=>s.open+cashIn(s.id)-cashOut(s.id);
+/* views */
+const V={};
+function go(v,p){view=v;if(p)vp=Object.assign(vp,p);render();scrollTo(0,0)}
+function render(){$('#m').innerHTML=V[view]();const g=['rep','menu','ing','log','bak'].includes(view)?'more':view;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==g))}
+const rem=()=>{const s=S.shift;if(!s)return'';const e=SH[s.name][1]||24,h=W().h;return(h==e-1||(e==24&&h==23))?`<div class=warn><b>Sebentar lagi pergantian shift.</b> Siapkan checklist serah terima di tab Shift.</div>`:''};
+V.home=()=>{const s=S.shift,d=s?s.date:W().d,T=txs(onDate(d)),by=f=>sum(T.filter(f).map(t=>t.total)),un=S.tx.filter(t=>!t.void&&paid(t)<t.total);
+const low=S.ing.filter(i=>i.q<=i.min);
+return`<h2>Moki Kasir</h2>${rem()}<div class=card>${s?`Shift <b>${s.name}</b> aktif sejak ${W(s.start).t} (tanggal operasional ${s.date})`:'<b class=bad>Tidak ada shift aktif.</b> Buka shift di tab Shift.'}<br><small>Sekarang ${W().t} WITA</small></div>
+<div class=kpi><div><span>Omzet ${d}</span><b>${rp(sum(T.map(t=>t.total)))}</b></div><div><span>Transaksi</span><b>${T.length}</b></div>
+<div><span>Diterima tunai</span><b>${rp(sum(T.flatMap(t=>t.pays).filter(p=>p.m=='Tunai').map(p=>p.amt)))}</b></div><div><span>Digital/platform</span><b>${rp(sum(T.flatMap(t=>t.pays).filter(p=>p.m!='Tunai').map(p=>p.amt)))}</b></div>
+<div><span>Belum dibayar</span><b class=${un.length?'bad':''}>${rp(sum(un.map(t=>t.total-paid(t))))}</b></div><div><span>Selisih kas shift terakhir</span><b>${S.shifts.length?rp(S.shifts[0].diff??0):'-'}</b></div></div>
+<h3>Stok ayam</h3><div class=kpi>${['bawah','mix'].map(t=>`<div><span>${N[t]}</span><b>${S.stock[t].raw} mentah · ${S.stock[t].cooked} matang</b></div>`).join('')}</div>
+${low.length?`<div class=warn><b>Stok bahan menipis:</b> ${low.map(i=>E(i.name)).join(', ')}</div>`:''}
+${un.length?'<h3>Belum dibayar</h3>'+un.map(txRow).join(''):''}`};
+const txRow=t=>`<div class="card ${t.void?'void':''}"><b>${t.no}</b> · ${W(t.ts).t} · ${E(t.ch)} · ${E(t.method)}<br>${t.items.map(i=>i.q+'× '+E(i.name)).join(', ')}<br><b>${rp(t.total)}</b> ${t.void?'<span class=bad>VOID: '+E(t.reason)+'</span>':stt(t)}${t.void||t.served?'':' · <i>belum diserahkan</i>'}${t.note?'<br><small>'+E(t.note)+'</small>':''}${t.void?'':`<div class=row>${paid(t)<t.total?`<button onclick="payTx('${t.id}')">Bayar</button>`:''}${t.served?'':`<button onclick="serve('${t.id}')">Serahkan</button>`}<button class=g onclick="voidTx('${t.id}')">Void</button></div>`}</div>`;
+V.kasir=()=>{const ch=vp.ch||S.channels[0],cart=vp.cart,tot=sum(cart.map(c=>(price(c,ch)||0)*c.q)),pm=ch=='Dine-in'?'Tunai':'Platform online';
+return`<h2>Kasir</h2>${S.shift?'':'<div class="warn">Buka shift dulu di tab Shift sebelum mencatat.</div>'}
+<select onchange="vp.ch=this.value;render()">${S.channels.map(c=>`<option ${c==ch?'selected':''}>${E(c)}</option>`).join('')}</select>
+<div class=grid>${S.menu.filter(m=>m.on).map(m=>`<button class=mi onclick="add('${m.id}')">${E(m.name)}<small>${m.prices[ch]!=null?rp(m.prices[ch]):'harga belum diisi'}</small></button>`).join('')}</div>
+${cart.length?`<div class=card>${cart.map((c,i)=>`<div class=row><span style="flex:3">${c.q}× ${E(mn(c.mid).name)}<br><small>${price(c,ch)!=null?rp(price(c,ch)):'harga?'}</small></span><button class=g onclick="qty(${i},-1)">−</button><button class=g onclick="qty(${i},1)">+</button><button class=g onclick="setP(${i})">Harga</button></div>`).join('')}<h3>Total ${rp(tot)}</h3>
+<div class=row><select id=pm>${METH.map(m=>`<option ${m==pm?'selected':''}>${m}</option>`).join('')}</select><select id=ps><option value=l>Lunas</option><option value=b>Belum dibayar</option></select></div>
+<label style="display:flex;gap:8px;align-items:center"><input type=checkbox id=sv checked style="width:24px;min-height:24px">Makanan sudah diserahkan (kurangi stok)</label>
+<input id=nt placeholder="Catatan" value="${E(vp.nt||'')}" oninput="vp.nt=this.value"><div class=row><button onclick="saveTx()">Simpan transaksi</button><button class=g onclick="vp.cart=[];render()">Kosongkan</button></div></div>`:''}
+<h3>Transaksi shift ini</h3>${S.shift?S.tx.filter(t=>t.sid==S.shift.id).slice(0,30).map(txRow).join('')||'<small>Belum ada.</small>':''}`};
+function add(i){const c=vp.cart.find(x=>x.mid==i&&x.p===undefined);c?c.q++:vp.cart.push({mid:i,q:1});render()}
+function qty(i,d){vp.cart[i].q+=d;if(vp.cart[i].q<1)vp.cart.splice(i,1);render()}
+function setP(i){const v=ask('Harga satuan');if(v!==null){vp.cart[i].p=v;render()}}
+function saveTx(){if(!S.shift)return alert('Buka shift dulu.');const ch=vp.ch||S.channels[0];
+if(vp.cart.some(c=>price(c,ch)==null))return alert('Ada menu tanpa harga untuk saluran ini. Ketuk "Harga" untuk mengisinya.');
+const items=vp.cart.map(c=>({mid:c.mid,name:mn(c.mid).name,q:c.q,p:price(c,ch)})),total=sum(items.map(i=>i.p*i.q)),now=Date.now(),m=$('#pm').value;
+const t={id:uid(),no:'T'+W().d.replace(/-/g,'')+'-'+String(++S.seq).padStart(3,'0'),ts:now,sid:S.shift.id,ch,method:m,items,total,pays:[],note:vp.nt||'',served:false,ded:{}};
+if($('#ps').value=='l')t.pays.push({ts:now,m,amt:total,sid:S.shift.id});
+S.tx.unshift(t);lg('transaksi',`Dibuat ${t.no} ${rp(total)} ${ch} ${m} ${$('#ps').value=='l'?'lunas':'BELUM DIBAYAR'}`);
+if($('#sv').checked)doServe(t);vp.cart=[];vp.nt='';commit()}
+function doServe(t){if(t.served)return;const d={};t.items.forEach(i=>{const r=mn(i.mid)?.rec;if(r)d[r.t]=(d[r.t]||0)+r.q*i.q});
+for(const k in d){mv(k,'jual',0,-d[k],t.no);if(S.stock[k].cooked<0)alert(`Stok ${N[k]} matang jadi minus. Cek penggorengan/stok.`)}t.ded=d;t.served=true}
+function serve(id){doServe(S.tx.find(t=>t.id==id));commit()}
+function payTx(id){if(!S.shift)return alert('Buka shift dulu.');const t=S.tx.find(x=>x.id==id),r=t.total-paid(t);
+const a=ask('Jumlah dibayar (sisa '+rp(r)+')',r);if(!a)return;const k=ask('Metode: 1 Tunai, 2 QRIS, 3 Transfer, 4 Platform online',1);if(!METH[k-1])return;
+t.pays.push({ts:Date.now(),m:METH[k-1],amt:a,sid:S.shift.id});lg('pembayaran',`${t.no} dibayar ${rp(a)} via ${METH[k-1]}`);commit()}
+function voidTx(id){const t=S.tx.find(x=>x.id==id),r=prompt('Alasan void '+t.no+'? (wajib)');if(!r)return;
+t.void=true;t.reason=r;t.voidTs=Date.now();for(const k in t.ded)mv(k,'balik void',0,t.ded[k],t.no);
+lg('void',`${t.no} dibatalkan: ${r}${paid(t)?' (uang '+rp(paid(t))+' dianggap dikembalikan)':''}`);commit()}
+V.stok=()=>`<h2>Stok ayam</h2>${['bawah','mix'].map(t=>`<div class=card><b>${N[t]}</b><div class=kpi><div><span>Mentah</span><b>${S.stock[t].raw}</b></div><div><span>Matang</span><b>${S.stock[t].cooked}</b></div></div><small>Total ${S.stock[t].raw+S.stock[t].cooked}</small>
+<div class=row><button onclick="stIn('${t}')">Masuk</button><button onclick="fry('${t}')">Goreng</button></div><div class=row><button class=g onclick="stOut('${t}','pakai')">Pakai khusus</button><button class=g onclick="stOut('${t}','rusak')">Rusak</button></div></div>`).join('')}
+<h3>Riwayat pergerakan</h3>${S.moves.slice(0,40).map(m=>`<div class=card><small>${W(m.ts).d} ${W(m.ts).t}</small> ${N[m.t]} · ${m.kind}<br>mentah ${m.dr>0?'+':''}${m.dr} · matang ${m.dc>0?'+':''}${m.dc} <small>${E(m.note||'')}</small></div>`).join('')||'<small>Belum ada.</small>'}`;
+function stIn(t){const n=ask(N[t]+' mentah masuk (potong)');if(n>0){mv(t,'masuk',n,0,'barang masuk');commit()}}
+function fry(t){const n=ask(N[t]+' yang digoreng (mentah→matang)');if(!n||n<=0)return;if(n>S.stock[t].raw&&!confirm('Melebihi stok mentah di sistem. Lanjut?'))return;mv(t,'goreng',-n,n,'transfer mentah→matang');commit()}
+function stOut(t,k){const n=ask('Jumlah potong');if(!n||n<=0)return;const c=prompt('Kondisi: m = matang, r = mentah','m');if(!c)return;
+const cat=k=='pakai'?prompt('Kategori: pesanan khusus / konsumsi / konten / lainnya','konsumsi'):prompt('Penyebab rusak/terbuang','');if(cat===null)return;
+const raw=c=='r';mv(t,k=='pakai'?'pakai:'+cat:'rusak',raw?-n:0,raw?0:-n,cat);commit()}
+V.shift=()=>{const s=S.shift;if(!s){const h=W().h,nm=h>=16?'Sore':h>=8?'Pagi':'Malam',d=W(Date.now()-(nm=='Malam'?864e5:0)).d;
+return`<h2>Buka shift</h2><label>Tanggal operasional<input type=date id=od value="${d}"></label><small>Shift Malam (00.00–08.00) masuk ke tanggal operasional hari sebelumnya. Ubah jika perlu.</small>
+<label>Shift<select id=on>${Object.keys(SH).map(x=>`<option ${x==nm?'selected':''}>${x}</option>`).join('')}</select></label>
+<label>Kas awal (hitung fisik)<input id=oc type=number inputmode=numeric></label><h3>Hitung stok ayam (fisik)</h3>${stForm()}
+<small>Selisih dengan catatan sistem akan dicatat sebagai koreksi opname.</small><div class=row><button onclick="openShift()">Mulai shift</button></div>${hist()}`}
+const ex=expected(s);return`<h2>Shift ${s.name}</h2>${rem()}<div class=card>Tanggal operasional ${s.date} · mulai ${W(s.start).t}<br>Kas awal ${rp(s.open)} · tunai masuk ${rp(cashIn(s.id))}<br>Pengeluaran ${rp(cashOut(s.id,'keluar'))} · diambil/setor ${rp(cashOut(s.id,'ambil'))}<br><b>Kas diharapkan ${rp(ex)}</b></div>
+<div class=row><button onclick="cashMv('keluar')">+ Pengeluaran</button><button onclick="cashMv('ambil')">+ Ambil/setor</button></div>
+${S.cash.filter(c=>c.sid==s.id).map(c=>`<div class=card><small>${W(c.ts).t}</small> ${c.type=='keluar'?'Pengeluaran':'Ambil/setor'} ${rp(c.amt)} ${E(c.note)}</div>`).join('')}
+<h3>Tutup shift</h3><label>Kas aktual (hitung fisik)<input id=cc type=number inputmode=numeric></label>${stForm()}
+<label>Catatan serah terima<input id=cn></label>${CK.map((c,i)=>`<label style="display:flex;gap:8px;align-items:center;color:var(--t)"><input type=checkbox id=ck${i} style="width:24px;min-height:24px">${c}</label>`).join('')}
+<div class=row><button onclick="closeShift()">Tutup shift</button></div>`};
+const stForm=()=>['bawah','mix'].flatMap(t=>['raw','cooked'].map(c=>`<label>${N[t]} ${c=='raw'?'mentah':'matang'} (sistem: ${S.stock[t][c]})<input id=s-${t}-${c} type=number inputmode=numeric></label>`)).join('');
+const rdStock=()=>{const r={};for(const t of['bawah','mix']){r[t]={};for(const c of['raw','cooked']){const v=num($(`#s-${t}-${c}`).value||null);if(v===null)return null;r[t][c]=v}}return r};
+function opname(r,note){for(const t in r){const dr=r[t].raw-S.stock[t].raw,dc=r[t].cooked-S.stock[t].cooked;if(dr||dc)mv(t,'opname',dr,dc,note)}}
+function openShift(){const c=num($('#oc').value||null),r=rdStock();if(c===null||!r)return alert('Isi kas awal dan semua stok ayam hasil hitung fisik.');
+const s={id:uid(),date:$('#od').value,name:$('#on').value,start:Date.now(),open:c,openStock:JSON.parse(JSON.stringify(r)),status:'aktif'};
+if(S.shifts.some(x=>x.date==s.date&&x.name==s.name)&&!confirm('Shift ini sudah pernah dibuka di tanggal tersebut. Lanjut?'))return;
+S.shift=s;S.shifts.unshift(s);lg('shift','Shift '+s.name+' dibuka, kas awal '+rp(c));opname(r,'stok awal shift');commit();go('kasir')}
+function cashMv(ty){const a=ask(ty=='keluar'?'Jumlah pengeluaran':'Jumlah uang diambil/disetor');if(!a)return;const n=prompt('Keterangan','')||'';S.cash.unshift({ts:Date.now(),sid:S.shift.id,type:ty,amt:a,note:n});lg('kas',(ty=='keluar'?'Pengeluaran ':'Ambil/setor ')+rp(a)+' '+n);commit()}
+function closeShift(){const s=S.shift,c=num($('#cc').value||null),r=rdStock();if(c===null||!r)return alert('Isi kas aktual dan semua stok ayam aktual.');
+if(CK.some((_,i)=>!$('#ck'+i).checked))return alert('Selesaikan seluruh checklist.');const ex=expected(s),d=c-ex;
+if(!confirm(`Kas diharapkan ${rp(ex)}\nKas aktual ${rp(c)}\nSelisih ${rp(d)}\n\nTutup shift sekarang?`))return;
+s.end=Date.now();s.close=c;s.exp=ex;s.diff=d;s.note=$('#cn').value;s.status='selesai';s.closeStock=r;s.sysStock=JSON.parse(JSON.stringify(S.stock));
+lg('shift',`Shift ${s.name} ditutup. Selisih kas ${rp(d)}`);opname(r,'stok akhir shift');S.shift=null;commit();go('rep',{rd:s.date})}
+const hist=()=>'<h3>Shift sebelumnya</h3>'+S.shifts.filter(s=>s.status=='selesai').slice(0,6).map(s=>`<div class=card>${s.date} ${s.name} · selisih <b class=${s.diff?'bad':'ok'}>${rp(s.diff)}</b>${s.note?'<br><small>'+E(s.note)+'</small>':''}</div>`).join('');
+V.more=()=>`<h2>Lainnya</h2><div class=grid><button class=mi onclick="go('rep')">Laporan</button><button class=mi onclick="go('menu')">Menu & harga</button><button class=mi onclick="go('ing')">Bahan baku</button><button class=mi onclick="go('log')">Riwayat audit</button><button class=mi onclick="go('bak')">Backup & restore</button></div>`;
+V.menu=()=>`<h2>Menu & harga</h2><div class=row><button onclick="editMenu()">+ Menu baru</button></div>${S.menu.map(m=>`<div class="card ${m.on?'':'void'}" onclick="editMenu('${m.id}')"><b>${E(m.name)}</b> <small>${E(m.cat)}${m.on?'':' · nonaktif'}</small><br>${S.channels.map(c=>E(c)+': '+(m.prices[c]!=null?rp(m.prices[c]):'-')).join(' · ')}<br><small>Resep: ${m.rec?m.rec.q+' '+N[m.rec.t]+' matang':'tidak mengurangi stok'} ${E(m.note)}</small></div>`).join('')}
+<h3>Saluran</h3><div class=row><button class=g onclick="addCh()">+ Saluran penjualan</button></div>`;
+function editMenu(id){const m=id?mn(id):M('', 'Lainnya',{});const n=prompt('Nama menu',m.name);if(!n)return;m.name=n;m.cat=prompt('Kategori',m.cat)||m.cat;
+S.channels.forEach(c=>{const v=prompt('Harga '+c+' (kosong = tidak ada)',m.prices[c]??'');if(v===null)return;const x=num(v);x===null?delete m.prices[c]:m.prices[c]=x});
+const r=prompt('Resep stok: b = 1 paha bawah matang, m = 1 ayam campur matang, angka+huruf mis. 2b, kosong = tidak ada',m.rec?m.rec.q+(m.rec.t=='bawah'?'b':'m'):'');
+if(r!==null){const q=parseFloat(r)||1,t=/b/i.test(r)?'bawah':/m/i.test(r)?'mix':null;m.rec=t?{t,q}:null}
+m.on=confirm('Menu aktif? OK = aktif, Batal = nonaktif');if(!id)S.menu.push(m);lg('menu','Menu disimpan: '+m.name);commit()}
+function addCh(){const n=prompt('Nama saluran baru');if(n&&!S.channels.includes(n)){S.channels.push(n);commit()}}
+V.ing=()=>`<h2>Bahan baku</h2><div class=row><button onclick="addIng()">+ Bahan</button></div>${S.ing.map(i=>`<div class=card><b>${E(i.name)}</b> <small>${E(i.cat)}</small><br><b class=${i.q<=i.min?'bad':''}>${i.q} ${E(i.unit)}</b> <small>min ${i.min}</small><div class=row><button onclick="ingMv('${i.id}',1)">Masuk</button><button class=g onclick="ingMv('${i.id}',-1)">Pakai</button><button class=g onclick="ingMv('${i.id}',0)">Opname</button></div></div>`).join('')||'<small>Belum ada bahan. Tambahkan beras, minyak, dll.</small>'}
+<h3>Riwayat</h3>${S.imoves.slice(0,30).map(x=>`<small>${W(x.ts).d} ${W(x.ts).t} ${E(x.name)} ${x.d>0?'+':''}${x.d} (${x.k})</small><br>`).join('')}`;
+function addIng(){const n=prompt('Nama bahan');if(!n)return;S.ing.push({id:uid(),name:n,cat:prompt('Kategori','Bahan')||'',unit:prompt('Satuan (kg, liter, pcs, ...)','kg')||'',q:ask('Stok awal',0)||0,min:ask('Batas minimum',0)||0});commit()}
+function ingMv(id,s){const i=S.ing.find(x=>x.id==id),a=ask(s==0?'Stok aktual hasil hitung':'Jumlah');if(a===null)return;const d=s==0?a-i.q:s*a;i.q+=d;S.imoves.unshift({ts:Date.now(),name:i.name,d,k:s>0?'masuk':s<0?'pakai':'opname'});lg('bahan',`${i.name} ${d>0?'+':''}${d}`);commit()}
+V.log=()=>`<h2>Riwayat audit</h2>${S.log.slice(0,150).map(l=>`<div class=card><small>${W(l.ts).d} ${W(l.ts).t} · ${l.type}</small><br>${E(l.msg)}</div>`).join('')}`;
+function repData(d){const sh=S.shifts.filter(s=>s.date==d).reverse(),T=txs(onDate(d)),by=(k)=>{const o={};T.forEach(t=>o[t[k]]=(o[t[k]]||0)+t.total);return o};
+const pm={};T.flatMap(t=>t.pays).forEach(p=>pm[p.m]=(pm[p.m]||0)+p.amt);return{sh,T,ch:by('ch'),pm,un:T.filter(t=>paid(t)<t.total)}}
+V.rep=()=>{const d=vp.rd||W().d,R=repData(d),tb=o=>'<table>'+Object.entries(o).map(([k,v])=>`<tr><td>${E(k)}</td><td>${rp(v)}</td></tr>`).join('')+'</table>';
+return`<h2>Laporan harian</h2><input type=date value="${d}" class=np onchange="vp.rd=this.value;render()"><div class=card><b>Omzet ${rp(sum(R.T.map(t=>t.total)))}</b> · ${R.T.length} transaksi</div>
+<h3>Penjualan per saluran</h3>${tb(R.ch)}<h3>Pembayaran diterima per metode</h3>${tb(R.pm)}<small>Hanya "Tunai" yang masuk laci kas.</small>
+<h3>Belum lunas</h3>${R.un.length?tb(Object.fromEntries(R.un.map(t=>[t.no,t.total-paid(t)]))):'<small>Tidak ada.</small>'}
+<h3>Per shift</h3>${R.sh.map(s=>{const T=S.tx.filter(t=>!t.void&&t.sid==s.id),ex=s.exp??expected(s);return`<div class=card><b>${s.name}</b> ${W(s.start).t}–${s.end?W(s.end).t:'berjalan'} · ${T.length} trx · ${rp(sum(T.map(t=>t.total)))}<br>Kas awal ${rp(s.open)} · diharapkan ${rp(ex)} · aktual ${s.close!=null?rp(s.close):'-'} · selisih <b class=${s.diff?'bad':''}>${s.diff!=null?rp(s.diff):'-'}</b><br>Pengeluaran ${rp(cashOut(s.id,'keluar'))} · ambil/setor ${rp(cashOut(s.id,'ambil'))}<br><small>Stok awal: ${st4(s.openStock)}<br>Stok akhir: ${s.closeStock?st4(s.closeStock):'-'}</small>${s.note?'<br><small>Catatan: '+E(s.note)+'</small>':''}</div>`}).join('')||'<small>Tidak ada shift.</small>'}
+<div class="row np"><button onclick="csv('${d}')">Ekspor CSV</button><button class=g onclick="print()">Cetak</button></div>`};
+const st4=s=>s?['bawah','mix'].map(t=>`${N[t]} ${s[t].raw}m/${s[t].cooked}k`).join(', '):'';
+function csv(d){const q=x=>'"'+String(x??'').replace(/"/g,'""')+'"',rows=[['no','tanggal_op','jam','shift','saluran','metode','total','dibayar','void','item','catatan']];
+S.tx.filter(t=>shOf(t.sid)?.date==d).forEach(t=>rows.push([t.no,d,W(t.ts).t,shOf(t.sid).name,t.ch,t.method,t.total,paid(t),t.void?'ya':'',t.items.map(i=>i.q+'x '+i.name).join('; '),t.note]));
+dl(rows.map(r=>r.map(q).join(',')).join('\n'),`moki-${d}.csv`,'text/csv')}
+function dl(txt,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()}
+V.bak=()=>`<h2>Backup & restore</h2><div class=card>Backup terakhir: ${S.last?W(S.last).d+' '+W(S.last).t:'<b class=bad>belum pernah</b>'}<br><small>Data hanya ada di browser HP ini. Backup rutin setiap akhir hari dan simpan file ke Google Drive/WhatsApp pribadi, bukan GitHub publik.</small></div>
+<div class=row><button onclick="backup()">Backup semua data</button></div><label>Restore dari file<input type=file accept=.json onchange="restore(this.files[0])"></label><div class=row><button class=g onclick="wipe()">Hapus semua data</button></div>`;
+function backup(){S.last=Date.now();save();dl(JSON.stringify(S),`moki-backup-${W().d}.json`,'application/json');render()}
+function restore(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d||d.v!==1||!Array.isArray(d.menu)||!Array.isArray(d.tx)||!d.stock)throw 0;
+if(!confirm(`Backup berisi ${d.tx.length} transaksi dan ${d.menu.length} menu. Data saat ini akan DIGANTI. Lanjut?`))return;S=d;commit();alert('Restore berhasil.')}catch(e){alert('File backup tidak valid.')}};r.readAsText(f)}
+function wipe(){if(prompt('Ketik HAPUS untuk menghapus semua data (backup dulu!)')=='HAPUS'){S=seed();commit()}}
+(async()=>{S=await load()||seed();navigator.storage?.persist?.();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');render();setInterval(()=>{if(view=='home')render()},60000)})();
+</script></body></html>
