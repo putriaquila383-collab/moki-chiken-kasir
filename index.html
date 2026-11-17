@@ -57,11 +57,13 @@ function go(v,p){view=v;if(p)vp=Object.assign(vp,p);render();scrollTo(0,0)}
 function render(){$('#m').innerHTML=V[view]();const g=['rep','menu','medit','ing','log','bak'].includes(view)?'more':view;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==g))}
 const rem=()=>{const s=S.shift;if(!s)return'';const e=SH[s.name][1]||24,h=W().h;return(h==e-1||(e==24&&h==23))?`<div class=warn><b>Sebentar lagi pergantian shift.</b> Siapkan checklist serah terima di tab Shift.</div>`:''};
 V.home=()=>{const s=S.shift,d=s?s.date:W().d,T=txs(onDate(d)),by=f=>sum(T.filter(f).map(t=>t.total)),un=S.tx.filter(t=>!t.void&&paid(t)<t.total);
-const low=S.ing.filter(i=>i.q<=i.min);
+const low=S.ing.filter(i=>i.q<=i.min);const pc=m=>{const x=T.filter(t=>t.pays.some(p=>p.m==m));return x.length+' trx · '+rp(sum(x.flatMap(t=>t.pays).filter(p=>p.m==m).map(p=>p.amt)))},sold={bawah:0,mix:0};T.forEach(t=>{for(const k in t.ded)sold[k]+=t.ded[k]});
 return`<h2>Moki Kasir</h2>${rem()}<div class=card>${s?`Shift <b>${s.name}</b> aktif sejak ${W(s.start).t} (tanggal operasional ${s.date})`:'<b class=bad>Tidak ada shift aktif.</b> Buka shift di tab Shift.'}<br><small>Sekarang ${W().t} WITA</small></div>
 <div class=kpi><div><span>Omzet ${d}</span><b>${rp(sum(T.map(t=>t.total)))}</b></div><div><span>Transaksi</span><b>${T.length}</b></div>
 <div><span>Diterima tunai</span><b>${rp(sum(T.flatMap(t=>t.pays).filter(p=>p.m=='Tunai').map(p=>p.amt)))}</b></div><div><span>Digital/platform</span><b>${rp(sum(T.flatMap(t=>t.pays).filter(p=>p.m!='Tunai').map(p=>p.amt)))}</b></div>
 <div><span>Belum dibayar</span><b class=${un.length?'bad':''}>${rp(sum(un.map(t=>t.total-paid(t))))}</b></div><div><span>Selisih kas shift terakhir</span><b>${S.shifts.length?rp(S.shifts[0].diff??0):'-'}</b></div></div>
+<h3>Transaksi ${d}</h3><div class=card><b>Total ${T.length} transaksi</b><table>${METH.map(m=>`<tr><td>${m}</td><td>${pc(m)}</td></tr>`).join('')}</table></div>
+<div class=card><b>Ayam laku: ${sold.bawah+sold.mix} potong</b><br><small>Paha bawah ${sold.bawah} · dada/sayap/paha atas ${sold.mix}</small></div>
 <h3>Stok ayam</h3>${stSum()}<div class=kpi>${['bawah','mix'].map(t=>`<div><span>${N[t]}</span><b>${S.stock[t].raw} mentah · ${S.stock[t].cooked} matang</b></div>`).join('')}</div>
 ${low.length?`<div class=warn><b>Stok bahan menipis:</b> ${low.map(i=>E(i.name)).join(', ')}</div>`:''}
 ${un.length?'<h3>Belum dibayar</h3>'+un.map(txRow).join(''):''}`};
