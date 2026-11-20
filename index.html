@@ -26,7 +26,7 @@ const W=(t=Date.now())=>{const s=new Date(t).toLocaleString('sv-SE',{timeZone:'A
 const SH={Pagi:[8,16],Sore:[16,24],Malam:[0,8]},N={bawah:'Paha bawah',mix:'Ayam campur'},METH=['Tunai','QRIS','Transfer','Platform online'];
 const CK=['Periksa uang kas','Periksa transaksi Bobble','Periksa ayam mentah','Periksa ayam matang','Periksa bahan baku','Periksa pesanan belum dibayar','Periksa pengeluaran','Catat masalah/kejadian khusus'];
 const M=(name,cat,prices,rt,note)=>({id:uid(),name,cat,prices,rec:rt?{t:rt,q:1}:null,on:true,note:note||''});
-const seed=()=>({v:1,seq:0,last:null,channels:['Dine-in','GrabFood','ShopeeFood','GoFood'],shift:null,shifts:[],tx:[],cash:[],moves:[],log:[],ing:[],imoves:[],
+const seed=()=>({v:1,seq:0,last:null,channels:['Dine-in','Takeaway','GrabFood','ShopeeFood','GoFood'],shift:null,shifts:[],tx:[],cash:[],moves:[],log:[],ing:[],imoves:[],
 stock:{bawah:{raw:0,cooked:0},mix:{raw:0,cooked:0}},menu:[
 M('Nasi + ayam campur','Paket',{'Dine-in':16000},'mix'),M('Nasi + paha bawah','Paket',{'Dine-in':15000},'bawah'),
 M('Ayam campur (tanpa nasi)','Ayam',{'Dine-in':11000},'mix'),M('Ayam paha bawah (tanpa nasi)','Ayam',{'Dine-in':9000},'bawah'),
@@ -68,12 +68,12 @@ return`<h2>Moki Kasir</h2>${rem()}<div class=card>${s?`Shift <b>${s.name}</b> ak
 ${low.length?`<div class=warn><b>Stok bahan menipis:</b> ${low.map(i=>E(i.name)).join(', ')}</div>`:''}
 ${un.length?'<h3>Belum dibayar</h3>'+un.map(txRow).join(''):''}`};
 const txRow=t=>`<div class="card ${t.void?'void':''}"><b>${t.no}</b> · ${W(t.ts).t} · ${E(t.ch)} · ${E(t.method)}<br>${t.items.map(i=>i.q+'× '+E(i.name)).join(', ')}<br><b>${rp(t.total)}</b> ${t.void?'<span class=bad>VOID: '+E(t.reason)+'</span>':stt(t)}${t.void||t.served?'':' · <i>belum diserahkan</i>'}${t.note?'<br><small>'+E(t.note)+'</small>':''}${t.void?'':`<div class=row>${paid(t)<t.total?`<button onclick="payTx('${t.id}')">Bayar</button>`:''}${t.served?'':`<button onclick="serve('${t.id}')">Serahkan</button>`}<button class=g onclick="editTx('${t.id}')">Edit</button><button class=g onclick="voidTx('${t.id}')">Void</button></div>`}</div>`;
-V.kasir=()=>{const ch=vp.ch||S.channels[0],cart=vp.cart,tot=sum(cart.map(c=>(price(c,ch)||0)*c.q)),pm=ch=='Dine-in'?'Tunai':'Platform online';
+V.kasir=()=>{const ch=vp.ch||S.channels[0],cart=vp.cart,tot=sum(cart.map(c=>(price(c,ch)||0)*c.q)),pm=vp.pmv||(['GrabFood','ShopeeFood','GoFood'].includes(ch)?'Platform online':'Tunai');
 return`<h2>Kasir</h2>${S.shift?'':'<div class="warn">Buka shift dulu di tab Shift sebelum mencatat.</div>'}
-<select onchange="vp.ch=this.value;render()">${S.channels.map(c=>`<option ${c==ch?'selected':''}>${E(c)}</option>`).join('')}</select>
+<select onchange="vp.ch=this.value;vp.pmv=null;render()">${S.channels.map(c=>`<option ${c==ch?'selected':''}>${E(c)}</option>`).join('')}</select>
 <div class=grid>${S.menu.filter(m=>m.on).map(m=>`<button class=mi onclick="add('${m.id}')">${E(m.name)}<small>${m.prices[ch]!=null?rp(m.prices[ch]):'harga belum diisi'}</small></button>`).join('')}</div>
 ${cart.length?`<div class=card>${cart.map((c,i)=>`<div class=row><span style="flex:3">${c.q}× ${E(mn(c.mid).name)}<br><small>${price(c,ch)!=null?rp(price(c,ch)):'harga?'}</small></span><button class=g onclick="qty(${i},-1)">−</button><button class=g onclick="qty(${i},1)">+</button><button class=g onclick="setP(${i})">Harga</button></div>`).join('')}<h3>Total ${rp(tot)}</h3>
-<div class=row><select id=pm>${METH.map(m=>`<option ${m==pm?'selected':''}>${m}</option>`).join('')}</select><select id=ps><option value=l>Lunas</option><option value=b>Belum dibayar</option></select></div>
+<div class=row><select id=ps onchange="vp.ps=this.value;render()"><option value=l ${vp.ps!='b'?'selected':''}>Lunas</option><option value=b ${vp.ps=='b'?'selected':''}>Belum dibayar</option></select>${vp.ps=='b'?'':`<select id=pm onchange="vp.pmv=this.value">${METH.map(m=>`<option ${m==pm?'selected':''}>${m}</option>`).join('')}</select>`}</div>${vp.ps=='b'?'<small>Metode bayar dipilih nanti, saat pelanggan membayar (tombol Bayar).</small>':''}
 <label style="display:flex;gap:8px;align-items:center"><input type=checkbox id=sv checked style="width:24px;min-height:24px">Makanan sudah diserahkan (kurangi stok)</label>
 <input id=nt placeholder="Catatan" value="${E(vp.nt||'')}" oninput="vp.nt=this.value"><div class=row><button onclick="saveTx()">Simpan transaksi</button><button class=g onclick="vp.cart=[];render()">Kosongkan</button></div></div>`:''}
 <h3>Transaksi shift ini</h3>${S.shift?S.tx.filter(t=>t.sid==S.shift.id).slice(0,30).map(txRow).join('')||'<small>Belum ada.</small>':''}`};
@@ -82,11 +82,11 @@ function qty(i,d){vp.cart[i].q+=d;if(vp.cart[i].q<1)vp.cart.splice(i,1);render()
 function setP(i){const v=ask('Harga satuan');if(v!==null){vp.cart[i].p=v;render()}}
 function saveTx(){if(!S.shift)return alert('Buka shift dulu.');const ch=vp.ch||S.channels[0];
 if(vp.cart.some(c=>price(c,ch)==null))return alert('Ada menu tanpa harga untuk saluran ini. Ketuk "Harga" untuk mengisinya.');
-const items=vp.cart.map(c=>({mid:c.mid,name:mn(c.mid).name,q:c.q,p:price(c,ch)})),total=sum(items.map(i=>i.p*i.q)),now=Date.now(),m=$('#pm').value;
+const items=vp.cart.map(c=>({mid:c.mid,name:mn(c.mid).name,q:c.q,p:price(c,ch)})),total=sum(items.map(i=>i.p*i.q)),now=Date.now(),m=vp.ps=='b'?'belum dibayar':$('#pm').value;
 const t={id:uid(),no:'T'+W().d.replace(/-/g,'')+'-'+String(++S.seq).padStart(3,'0'),ts:now,sid:S.shift.id,ch,method:m,items,total,pays:[],note:vp.nt||'',served:false,ded:{}};
-if($('#ps').value=='l')t.pays.push({ts:now,m,amt:total,sid:S.shift.id});
-S.tx.unshift(t);lg('transaksi',`Dibuat ${t.no} ${rp(total)} ${ch} ${m} ${$('#ps').value=='l'?'lunas':'BELUM DIBAYAR'}`);
-if($('#sv').checked)doServe(t);vp.cart=[];vp.nt='';commit()}
+if(vp.ps!='b')t.pays.push({ts:now,m,amt:total,sid:S.shift.id});
+S.tx.unshift(t);lg('transaksi',`Dibuat ${t.no} ${rp(total)} ${ch} ${m} ${vp.ps!='b'?'lunas':'BELUM DIBAYAR'}`);
+if($('#sv').checked)doServe(t);vp.cart=[];vp.nt='';vp.ps='l';vp.pmv=null;commit()}
 function doServe(t){if(t.served)return;const d={};t.items.forEach(i=>{const r=mn(i.mid)?.rec;if(r)d[r.t]=(d[r.t]||0)+r.q*i.q});
 for(const k in d){mv(k,'jual',0,-d[k],t.no);if(S.stock[k].cooked<0)alert(`Stok ${N[k]} matang jadi minus. Cek penggorengan/stok.`)}t.ded=d;t.served=true}
 function serve(id){doServe(S.tx.find(t=>t.id==id));commit()}
@@ -102,9 +102,9 @@ function saveTe(){const t=S.tx.find(x=>x.id==vp.te),r=$('#te-r').value.trim();if
 const np=vp.tp.filter(p=>+p.amt>0).map(p=>({ts:p.ts,m:p.m,amt:+p.amt,sid:p.sid})),f=a=>a.length?a.map(p=>p.m+' '+rp(p.amt)).join(' + '):'belum dibayar';
 if(sum(np.map(p=>p.amt))>t.total&&!confirm('Total pembayaran melebihi total transaksi. Lanjut?'))return;
 lg('koreksi',`${t.no} pembayaran: ${f(t.pays)} → ${f(np)}. Alasan: ${r}`);t.pays=np;t.note=$('#te-n').value;if(np[0])t.method=np[0].m;commit();go(vp.bv||'kasir')}
-function payTx(id){if(!S.shift)return alert('Buka shift dulu.');const t=S.tx.find(x=>x.id==id),r=t.total-paid(t);
-const a=ask('Jumlah dibayar (sisa '+rp(r)+')',r);if(!a)return;const k=ask('Metode: 1 Tunai, 2 QRIS, 3 Transfer, 4 Platform online',1);if(!METH[k-1])return;
-t.pays.push({ts:Date.now(),m:METH[k-1],amt:a,sid:S.shift.id});lg('pembayaran',`${t.no} dibayar ${rp(a)} via ${METH[k-1]}`);commit()}
+function payTx(id){if(!S.shift)return alert('Buka shift dulu.');vp.pt=id;vp.bv=view;go('pay')}
+V.pay=()=>{const t=S.tx.find(x=>x.id==vp.pt),r=t.total-paid(t);return`<h2>Bayar</h2><div class=card><b>${t.no}</b> · ${E(t.ch)}<br>${t.items.map(i=>i.q+'× '+E(i.name)).join(', ')}<br><b>Sisa ${rp(r)}</b></div><label>Jumlah dibayar<input id=pa type=number inputmode=numeric value="${r}"></label><h3>Dibayar pakai</h3><div class=grid>${METH.map(m=>`<button class=mi onclick="doPay('${m}')">${m}</button>`).join('')}</div><div class=row><button class=g onclick="go(vp.bv||'kasir')">Batal</button></div>`};
+function doPay(m){const t=S.tx.find(x=>x.id==vp.pt),a=num($('#pa').value||null);if(!a||a<=0)return alert('Isi jumlah dibayar.');t.pays.push({ts:Date.now(),m,amt:a,sid:S.shift.id});t.method=m;lg('pembayaran',`${t.no} dibayar ${rp(a)} via ${m}`);commit();go(vp.bv||'kasir')}
 function voidTx(id){const t=S.tx.find(x=>x.id==id),r=prompt('Alasan void '+t.no+'? (wajib)');if(!r)return;
 t.void=true;t.reason=r;t.voidTs=Date.now();for(const k in t.ded)mv(k,'balik void',0,t.ded[k],t.no);
 lg('void',`${t.no} dibatalkan: ${r}${paid(t)?' (uang '+rp(paid(t))+' dianggap dikembalikan)':''}`);commit()}
@@ -172,7 +172,7 @@ return`<h2>Laporan harian</h2>${vp.gr?`<div class=card><textarea id=gr rows=20 s
 const stSum=()=>{const a=t=>S.stock[t],r=a('bawah').raw+a('mix').raw,c=a('bawah').cooked+a('mix').cooked;return`<div class=card><b>Total ayam ${r+c}</b><br>Mentah ${r} <small>(paha bawah ${a('bawah').raw}, dada/sayap/paha atas ${a('mix').raw})</small><br>Sudah goreng ${c} <small>(paha bawah ${a('bawah').cooked}, dada/sayap/paha atas ${a('mix').cooked})</small></div>`};
 function cp(){const t=$('#gr');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).catch(()=>document.execCommand('copy'));alert('Tersalin. Tempel di grup.')}
 function groupText(sid){const s=shOf(sid),T=S.tx.filter(t=>!t.void&&t.sid==sid),k=n=>String(Math.round(n/100)/10).replace('.',',')+' k',cnt=c=>T.filter(t=>t.ch==c).length,
-reg={bawah:0,mix:0},oj={bawah:0,mix:0},sp={};T.forEach(t=>{for(const x in t.ded)(t.ch=='Dine-in'?reg:oj)[x]+=t.ded[x]});
+reg={bawah:0,mix:0},oj={bawah:0,mix:0},sp={};T.forEach(t=>{for(const x in t.ded)(['Dine-in','Takeaway'].includes(t.ch)?reg:oj)[x]+=t.ded[x]});
 S.moves.filter(m=>m.sid==sid&&(m.kind.startsWith('pakai:')||m.kind=='rusak')).forEach(m=>{const c=m.kind=='rusak'?'rusak':m.kind.slice(6);sp[c]=(sp[c]||0)-(m.dr+m.dc)});
 const tot=sum([reg.bawah,reg.mix,oj.bawah,oj.mix,...Object.values(sp)]),tf=sum(T.flatMap(t=>t.pays).filter(p=>p.m=='Transfer'&&p.sid==sid).map(p=>p.amt)),
 ex=S.cash.filter(c=>c.sid==sid&&c.type=='keluar'),st=s.closeStock||S.stock,r=st.bawah.raw+st.mix.raw,c=st.bawah.cooked+st.mix.cooked,
@@ -189,10 +189,10 @@ S.tx.filter(t=>shOf(t.sid)?.date==d).forEach(t=>rows.push([t.no,d,W(t.ts).t,shOf
 dl(rows.map(r=>r.map(q).join(',')).join('\n'),`moki-${d}.csv`,'text/csv')}
 function dl(txt,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()}
 V.bak=()=>`<h2>Backup & restore</h2><div class=card>Backup terakhir: ${S.last?W(S.last).d+' '+W(S.last).t:'<b class=bad>belum pernah</b>'}<br><small>Data hanya ada di browser HP ini. Backup rutin setiap akhir hari dan simpan file ke Google Drive/WhatsApp pribadi, bukan GitHub publik.</small></div>
-<div class=row><button onclick="backup()">Backup semua data</button></div><label>Restore dari file<input type=file accept=.json onchange="restore(this.files[0])"></label><div class=row><button class=g onclick="wipe()">Hapus semua data</button></div>`;
+<div class=row><button onclick="backup()">Backup semua data</button></div><label>Restore dari file<input type=file accept=.json onchange="restore(this.files[0])"></label><div class=row><button class=g onclick="wipe(1)">Reset transaksi & stok (menu tetap)</button></div><div class=row><button class=g style="color:var(--bad)" onclick="wipe()">Hapus SEMUA termasuk menu</button></div>`;
 function backup(){S.last=Date.now();save();dl(JSON.stringify(S),`moki-backup-${W().d}.json`,'application/json');render()}
 function restore(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d||d.v!==1||!Array.isArray(d.menu)||!Array.isArray(d.tx)||!d.stock)throw 0;
 if(!confirm(`Backup berisi ${d.tx.length} transaksi dan ${d.menu.length} menu. Data saat ini akan DIGANTI. Lanjut?`))return;S=d;commit();alert('Restore berhasil.')}catch(e){alert('File backup tidak valid.')}};r.readAsText(f)}
-function wipe(){if(prompt('Ketik HAPUS untuk menghapus semua data (backup dulu!)')=='HAPUS'){S=seed();commit()}}
-(async()=>{S=await load()||seed();navigator.storage?.persist?.();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');render();setInterval(()=>{if(view=='home')render()},60000)})();
+function wipe(keep){const w=keep?'RESET':'HAPUS';if(prompt('Ketik '+w+' untuk melanjutkan (backup dulu!)')!=w)return;const n=seed();if(keep){n.menu=S.menu;n.channels=S.channels;n.ing=S.ing.map(i=>({...i,q:0}));n.last=S.last}S=n;commit()}
+(async()=>{S=await load()||seed();if(!S.channels.includes('Takeaway')){S.channels.splice(1,0,'Takeaway');save()}navigator.storage?.persist?.();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');render();setInterval(()=>{if(view=='home')render()},60000)})();
 </script></body></html>
